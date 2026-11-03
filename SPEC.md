@@ -91,6 +91,10 @@ diagnostics and `--scroll-log N` to print the selected frame's scroll data.
 Pass `--recompiled` as the second argument only for a ROM matching the generated
 `build/game.c`; generated code is not interchangeable between ROMs.
 
+Use `--trace N` to record the first N instructions as `PC A X Y P SP CYC`.
+Use `--trace-file path` to write the trace to a file, and compare interpreter
+and recompiled traces with `python tests/compare_trace.py left right`.
+
 ## M3 runtime behavior
 
 The mapper-0 runtime provides PPU register access with nametable mirroring,
@@ -111,6 +115,6 @@ an MVP approximation and does not include audio or non-zero mappers.
 ## M6 timing behavior
 
 The runtime advances the PPU after each CPU instruction and services a pending
-NMI only at the following instruction boundary when the CPU interrupt-disable
-flag is clear. Reading `$2002` clears both vblank and a pending NMI; enabling
+NMI at the following instruction boundary regardless of the CPU
+interrupt-disable flag. Reading `$2002` clears both vblank and a pending NMI; enabling
 NMI through `$2000` while vblank is active raises the pending edge.

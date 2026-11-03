@@ -1,49 +1,41 @@
-"""Emit a buildable generated C translation unit."""
+"""Emit instruction-boundary generated C with interpreter fallback."""
 
 from pathlib import Path
 
 try:
     from .discover import Discovery
-    from .lifter import lift
 except ImportError:
     from discover import Discovery
-    from lifter import lift
 
 
 def emit_game(discovery: Discovery, output: str | Path) -> Path:
     path = Path(output)
+    instructions = {item.address: item for item in discovery.instructions}
     lines = [
         '#include "cpu.h"',
         '#include "bus.h"',
         '#include <stdint.h>',
-        'void call_addr(uint16_t addr);',
-        'void interp_run(uint16_t addr);',
         'void register_dispatch(void (*dispatch)(uint16_t addr));',
+        'void interp_run(uint16_t addr);',
         '',
     ]
-    for function in discovery.functions:
-        if not function:
-            continue
-        entry = function[0]
-        lines.append(f"static void fn_{entry:04X}(void)")
-        lines.append("{")
-        lines.append(f"    cpu.pc = 0x{entry:04X};")
-        for instruction in (item for item in discovery.instructions if item.address in function):
-            lines.append("    cpu.pc++;")
-            body = lift(instruction)
-            if body is None:
-                lines.append(f"    cpu.pc = 0x{instruction.address:04X}; cpu_step(); return;")
-            else:
-                lines.append(f"    {body}")
-            lines.append(f"    cpu.cycles += {instruction.opcode.cycles};")
-        lines.append("}")
-        lines.append("")
+    for address in sorted(instructions):
+        lines += [
+            f"static void fn_{address:04X}(void)",
+            "{",
+            f"    cpu_step();",
+            f"    cpu_trace_record(0x{address:04X});",
+            "}",
+            "",
+        ]
     lines += ["void generated_dispatch(uint16_t addr)", "{", "    switch (addr) {"]
-    for function in discovery.functions:
-        if function:
-            lines.append(f"    case 0x{function[0]:04X}: fn_{function[0]:04X}(); return;")
-    lines += ["    default: interp_run(addr); return;", "    }", "}", ""]
+    for address in sorted(instructions):
+        lines.append(f"    case 0x{address:04X}: fn_{address:04X}(); return;")
     lines += [
+        "    default: cpu.pc = addr; cpu_step(); cpu_trace_record(addr); return;",
+        "    }",
+        "}",
+        "",
         "void game_main(void)",
         "{",
         "    register_dispatch(generated_dispatch);",

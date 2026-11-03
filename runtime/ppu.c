@@ -341,7 +341,8 @@ void ppu_write(uint16_t addr, uint8_t value)
     default: break;
     }
     if (write_log_frames > 0 && frame_number < write_log_frames &&
-        ((addr & 7) == 0 || (addr & 7) == 5 || (addr & 7) == 6 || (addr & 7) == 7)) {
+        ((addr & 7) == 0 || (addr & 7) == 1 || (addr & 7) == 5 ||
+         (addr & 7) == 6 || (addr & 7) == 7)) {
         printf("PPU-WRITE %u %u %04X %04X %02X v=%04X t=%04X\n",
             frame_number, scanline, cpu.pc, (unsigned)(0x2000 + (addr & 7)),
             value, v, t);

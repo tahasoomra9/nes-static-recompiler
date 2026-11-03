@@ -81,6 +81,18 @@ build\Release\nes_window.exe `
   build\frame120.bmp
 ```
 
+Trace the first N instructions:
+
+```powershell
+build\Release\nes_window.exe `
+  "rom-game\Super Mario Bros. (Europe).nes" `
+  --trace 100 `
+  --trace-file build\interpreter.trace
+```
+
+Use `--recompiled --trace N` with the generated executable to capture the
+recompiled path.
+
 ## Tests
 
 ```powershell

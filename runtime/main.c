@@ -41,6 +41,8 @@ int main(int argc, char **argv)
     int bg_log = 0;
     int test_gradient = 0;
     int recompiled = 0;
+    uint64_t trace_limit = 0;
+    const char *trace_path = NULL;
     for (int i = 2; i < argc; ++i) {
         if (strcmp(argv[i], "--screenshot-frame") == 0 && i + 2 < argc) {
             screenshot_frame = atoi(argv[++i]);
@@ -63,8 +65,13 @@ int main(int argc, char **argv)
             frame_log = 1;
         } else if (strcmp(argv[i], "--recompiled") == 0) {
             recompiled = 1;
+        } else if (strcmp(argv[i], "--trace") == 0 && i + 1 < argc) {
+            trace_limit = strtoull(argv[++i], NULL, 10);
+        } else if (strcmp(argv[i], "--trace-file") == 0 && i + 1 < argc) {
+            trace_path = argv[++i];
         }
     }
+    cpu_trace_configure(trace_limit, trace_path);
     ppu_set_write_log_frames(ppu_log_frames);
     if (ppu_dump_frame != 0) ppu_set_nametable_dump_frame(ppu_dump_frame);
     if (ppm_frame != 0) ppu_set_ppm_dump(ppm_frame, ppm_path);
@@ -139,8 +146,10 @@ int main(int argc, char **argv)
             else if (event.type == SDL_KEYUP) handle_key(&event, 0);
         }
         for (unsigned cycle = 0; cycle < 90000 && running; ++cycle) {
+            uint16_t instruction_pc = cpu.pc;
             if (recompiled) call_addr(cpu.pc);
             else cpu_step();
+            if (!recompiled) cpu_trace_record(instruction_pc);
             ppu_step(1);
             cpu_safe_point();
         }
@@ -168,5 +177,6 @@ int main(int argc, char **argv)
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);
     SDL_Quit();
+    cpu_trace_close();
     return running ? 0 : 0;
 }
