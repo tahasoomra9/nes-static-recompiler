@@ -14,6 +14,8 @@ extern Cpu cpu;
 void cpu_step(void);
 void cpu_nmi(void);
 void cpu_safe_point(void);
+void cpu_set_irq_line(uint8_t asserted);
+uint8_t cpu_irq_line(void);
 void cpu_trace_configure(uint64_t limit, const char *path);
 void cpu_trace_record(uint16_t instruction_pc);
 void cpu_trace_close(void);

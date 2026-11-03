@@ -15,7 +15,6 @@ static void set_status(uint8_t v) { cpu.c=v&1; cpu.z=(v>>1)&1; cpu.i=(v>>2)&1; c
 static void adc(uint8_t v) { uint16_t s=cpu.a+v+cpu.c; cpu.v=((~(cpu.a^v)&(cpu.a^(uint8_t)s))&0x80)!=0; cpu.c=s>255; cpu.a=(uint8_t)s; flags(cpu.a); }
 static void cmp(uint8_t a, uint8_t v) { uint8_t r=(uint8_t)(a-v); cpu.c=a>=v; flags(r); }
 static void branch(int take) { int8_t d=(int8_t)rd(cpu.pc++); if(take) { uint16_t old=cpu.pc; cpu.pc=(uint16_t)(cpu.pc+d); cpu.cycles++; if((old&0xff00)!=(cpu.pc&0xff00)) cpu.cycles++; } }
-
 void cpu_step(void)
 {
     uint8_t op=rd(cpu.pc++), v, r; uint16_t a; int16_t s;
@@ -192,6 +191,10 @@ void cpu_step(void)
         cpu.pc++; cpu.cycles+=2; return;
     case 0x1c: case 0x3c: case 0x5c: case 0x7c: case 0xdc: case 0xfc:
         a=word(cpu.pc); cpu.pc+=2; { uint16_t e=a+cpu.x; cpu.cycles+=4+((a&0xff00)!=(e&0xff00)); } return;
+    case 0x26:a=rd(cpu.pc++);r=rd(a);v=(uint8_t)(r<<1|cpu.c);cpu.c=r>>7;wr(a,v);flags(v);cpu.cycles+=5;return;
+    case 0x2e:a=word(cpu.pc);cpu.pc+=2;r=rd(a);v=(uint8_t)(r<<1|cpu.c);cpu.c=r>>7;wr(a,v);flags(v);cpu.cycles+=6;return;
+    case 0x24:a=rd(cpu.pc++);v=rd(a);cpu.z=!(cpu.a&v);cpu.n=v>>7;cpu.v=(v>>6)&1;cpu.cycles+=3;return;
+    case 0x2c:a=word(cpu.pc);cpu.pc+=2;v=rd(a);cpu.z=!(cpu.a&v);cpu.n=v>>7;cpu.v=(v>>6)&1;cpu.cycles+=4;return;
     case 0xa3:a=zp((uint8_t)(rd(cpu.pc++)+cpu.x));v=rd(a);cpu.a=v;cpu.x=v;flags(v);cpu.cycles+=6;return;
     case 0xa7:a=rd(cpu.pc++);v=rd(a);cpu.a=v;cpu.x=v;flags(v);cpu.cycles+=3;return;
     case 0xaf:a=word(cpu.pc);cpu.pc+=2;v=rd(a);cpu.a=v;cpu.x=v;flags(v);cpu.cycles+=4;return;
@@ -202,10 +205,6 @@ void cpu_step(void)
     case 0x87:a=rd(cpu.pc++);wr(a,cpu.a&cpu.x);cpu.cycles+=3;return;
     case 0x8f:a=word(cpu.pc);cpu.pc+=2;wr(a,cpu.a&cpu.x);cpu.cycles+=4;return;
     case 0x97:a=(uint8_t)(rd(cpu.pc++)+cpu.y);wr(a,cpu.a&cpu.x);cpu.cycles+=4;return;
-    case 0x26:a=rd(cpu.pc++);r=rd(a);v=(uint8_t)(r<<1|cpu.c);cpu.c=r>>7;wr(a,v);flags(v);cpu.cycles+=5;return;
-    case 0x2e:a=word(cpu.pc);cpu.pc+=2;r=rd(a);v=(uint8_t)(r<<1|cpu.c);cpu.c=r>>7;wr(a,v);flags(v);cpu.cycles+=6;return;
-    case 0x24:a=rd(cpu.pc++);v=rd(a);cpu.z=!(cpu.a&v);cpu.n=v>>7;cpu.v=(v>>6)&1;cpu.cycles+=3;return;
-    case 0x2c:a=word(cpu.pc);cpu.pc+=2;v=rd(a);cpu.z=!(cpu.a&v);cpu.n=v>>7;cpu.v=(v>>6)&1;cpu.cycles+=4;return;
     default: break;
     }
     switch(op) {

@@ -1,4 +1,4 @@
-"""Parser for iNES and NES 2.0 ROM headers used by mapper 0."""
+"""Parser for iNES and NES 2.0 ROM headers."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,12 +76,18 @@ def parse_ines(data: bytes) -> InesRom:
         chr_ram_size = 0x2000 if chr_size == 0 else 0
         timing = "NTSC"
 
-    if mapper != 0:
-        raise InesError(f"mapper {mapper} unsupported; only mapper 0 is supported")
+    if mapper not in (0, 1, 2, 4):
+        raise InesError(f"mapper {mapper} unsupported; supported mappers are 0, 1, 2, and 4")
     if submapper != 0:
         raise InesError(f"submapper {submapper} unsupported; only submapper 0 is supported")
-    if not nes2 and prg_low not in (1, 2):
+    if mapper == 0 and not nes2 and prg_low not in (1, 2):
         raise InesError(f"mapper 0 requires 1 or 2 PRG banks, got {prg_low}")
+    if mapper == 2 and prg_low < 2:
+        raise InesError(f"mapper 2 requires at least 2 PRG banks, got {prg_low}")
+    if mapper == 1 and prg_low < 2:
+        raise InesError(f"mapper 1 requires at least 2 PRG banks, got {prg_low}")
+    if mapper == 4 and prg_size < 0x8000:
+        raise InesError("mapper 4 requires at least 32 KiB of PRG-ROM")
 
     has_trainer = bool(flags6 & 0x04)
     offset = 16 + (512 if has_trainer else 0)

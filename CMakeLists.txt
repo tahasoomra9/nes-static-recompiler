@@ -23,6 +23,7 @@ add_library(nes_runtime STATIC
     runtime/bus.c
     runtime/ppu.c
     runtime/input.c
+    runtime/apu.c
     runtime/interp.c
     runtime/mapper0.c
 )
@@ -65,6 +66,27 @@ target_link_libraries(m3_runtime_test PRIVATE nes_runtime)
 
 add_executable(m6_runtime_test tests/m6_runtime_test.c)
 target_link_libraries(m6_runtime_test PRIVATE nes_runtime)
+
+add_executable(p0_runtime_test tests/p0_runtime_test.c)
+target_link_libraries(p0_runtime_test PRIVATE nes_runtime)
+
+add_executable(p1_runtime_test tests/p1_runtime_test.c)
+target_link_libraries(p1_runtime_test PRIVATE nes_runtime)
+
+add_executable(p2_runtime_test tests/p2_runtime_test.c)
+target_link_libraries(p2_runtime_test PRIVATE nes_runtime)
+
+add_executable(p3_runtime_test tests/p3_runtime_test.c)
+target_link_libraries(p3_runtime_test PRIVATE nes_runtime)
+
+add_executable(q0_runtime_test tests/q0_runtime_test.c)
+target_link_libraries(q0_runtime_test PRIVATE nes_runtime)
+
+add_executable(q1_runtime_test tests/q1_runtime_test.c)
+target_link_libraries(q1_runtime_test PRIVATE nes_runtime)
+
+add_executable(q2_runtime_test tests/q2_runtime_test.c)
+target_link_libraries(q2_runtime_test PRIVATE nes_runtime)
 
 if (TARGET SDL2::SDL2main)
     target_link_libraries(nes_window PRIVATE SDL2::SDL2main)

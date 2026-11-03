@@ -6,6 +6,7 @@
 #include "cpu.h"
 #include "input.h"
 #include "ppu.h"
+#include "apu.h"
 
 void register_dispatch(void (*dispatch)(uint16_t addr));
 #ifdef NES_RECOMPILED
@@ -25,6 +26,13 @@ static void handle_key(const SDL_Event *event, int pressed)
     else if (key == SDLK_LEFT) button = 6;
     else if (key == SDLK_RIGHT) button = 7;
     if (button < 8) input_set_button(button, pressed);
+}
+
+static void audio_callback(void *userdata, Uint8 *stream, int length)
+{
+    (void)userdata;
+    SDL_memset(stream, 0, (size_t)length);
+    apu_pop_samples((int16_t *)stream, (uint32_t)(length / (int)sizeof(int16_t)));
 }
 
 int main(int argc, char **argv)
@@ -72,16 +80,27 @@ int main(int argc, char **argv)
         }
     }
     cpu_trace_configure(trace_limit, trace_path);
+    apu_reset();
     ppu_set_write_log_frames(ppu_log_frames);
     if (ppu_dump_frame != 0) ppu_set_nametable_dump_frame(ppu_dump_frame);
     if (ppm_frame != 0) ppu_set_ppm_dump(ppm_frame, ppm_path);
     if (scroll_log_frame != 0) ppu_set_scroll_log_frame(scroll_log_frame);
     ppu_set_bg_log(bg_log);
     ppu_set_frame_log(frame_log);
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
+    SDL_AudioSpec audio_spec;
+    SDL_zero(audio_spec);
+    audio_spec.freq = 48000;
+    audio_spec.format = AUDIO_S16SYS;
+    audio_spec.channels = 1;
+    audio_spec.samples = 1024;
+    audio_spec.callback = audio_callback;
+    SDL_AudioDeviceID audio = SDL_OpenAudioDevice(NULL, 0, &audio_spec, NULL, 0);
+    if (audio != 0) SDL_PauseAudioDevice(audio, 0);
+    else fprintf(stderr, "SDL audio unavailable: %s\n", SDL_GetError());
     SDL_Window *window = SDL_CreateWindow("NES Static Recompiler",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, NES_W * 2, NES_H * 2, SDL_WINDOW_SHOWN);
     if (window == NULL) {
@@ -151,6 +170,7 @@ int main(int argc, char **argv)
             else cpu_step();
             if (!recompiled) cpu_trace_record(instruction_pc);
             ppu_step(1);
+            apu_step(1);
             cpu_safe_point();
         }
         if (ppu_frame_ready()) {
@@ -176,7 +196,9 @@ int main(int argc, char **argv)
     if (texture) SDL_DestroyTexture(texture);
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);
+    if (audio != 0) SDL_CloseAudioDevice(audio);
     SDL_Quit();
+    bus_save_prg_ram();
     cpu_trace_close();
     return running ? 0 : 0;
 }

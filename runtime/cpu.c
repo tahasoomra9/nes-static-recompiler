@@ -1,12 +1,16 @@
 #include "cpu.h"
 #include "bus.h"
 #include "ppu.h"
+#include "apu.h"
 #include <stdio.h>
 
 Cpu cpu = {0};
 static uint64_t trace_limit;
 static uint64_t trace_count;
 static FILE *trace_file;
+static uint8_t external_irq_line;
+static uint8_t observed_i = 1;
+static uint8_t irq_delay;
 
 static uint8_t status_byte(void)
 {
@@ -30,6 +34,33 @@ void cpu_safe_point(void)
         cpu_nmi();
         ppu_nmi_ack();
     }
+    if (cpu.i != observed_i) {
+        observed_i = cpu.i;
+        irq_delay = 1;
+    }
+    if (irq_delay != 0) {
+        --irq_delay;
+        return;
+    }
+    if (cpu_irq_line() && !cpu.i) {
+        bus_write((uint16_t)(0x0100 | cpu.sp--), (uint8_t)(cpu.pc >> 8));
+        bus_write((uint16_t)(0x0100 | cpu.sp--), (uint8_t)cpu.pc);
+        bus_write((uint16_t)(0x0100 | cpu.sp--), status_byte());
+        cpu.i = 1;
+        cpu.pc = (uint16_t)(bus_read(0xfffe) | (bus_read(0xffff) << 8));
+        cpu.cycles += 7;
+        if (apu_irq_pending()) apu_clear_irq();
+    }
+}
+
+void cpu_set_irq_line(uint8_t asserted)
+{
+    external_irq_line = asserted != 0;
+}
+
+uint8_t cpu_irq_line(void)
+{
+    return (uint8_t)(external_irq_line || apu_irq_pending());
 }
 
 void cpu_trace_configure(uint64_t limit, const char *path)

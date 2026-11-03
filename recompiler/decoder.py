@@ -16,6 +16,7 @@ class DecodedInstruction:
     address: int
     opcode: Opcode
     operand: bytes
+    bank: int = 0
 
 
 _MODES = {
@@ -87,6 +88,53 @@ def _build_table() -> tuple[Opcode | None, ...]:
         (0xB4, "LDY", "zpx", 4), (0xB8, "CLV", "imp", 2),
     ):
         table[code] = Opcode(mnemonic, mode, _MODES[mode][0], cycles)
+    unofficial = {
+        0xA3: ("LAX", "inx", 6), 0xA7: ("LAX", "zp", 3),
+        0xAF: ("LAX", "abs", 4), 0xB3: ("LAX", "iny", 5),
+        0xB7: ("LAX", "zpy", 4), 0xBF: ("LAX", "aby", 4),
+        0x83: ("SAX", "inx", 6), 0x87: ("SAX", "zp", 3),
+        0x8F: ("SAX", "abs", 4), 0x97: ("SAX", "zpy", 4),
+        0xC3: ("DCP", "inx", 8), 0xC7: ("DCP", "zp", 5),
+        0xCF: ("DCP", "abs", 6), 0xD3: ("DCP", "iny", 8),
+        0xD7: ("DCP", "zpx", 6), 0xDB: ("DCP", "aby", 7),
+        0xDF: ("DCP", "abx", 7),
+        0xE3: ("ISB", "inx", 8), 0xE7: ("ISB", "zp", 5),
+        0xEF: ("ISB", "abs", 6), 0xF3: ("ISB", "iny", 8),
+        0xF7: ("ISB", "zpx", 6), 0xFB: ("ISB", "aby", 7),
+        0xFF: ("ISB", "abx", 7),
+        0x03: ("SLO", "inx", 8), 0x07: ("SLO", "zp", 5),
+        0x0F: ("SLO", "abs", 6), 0x13: ("SLO", "iny", 8),
+        0x17: ("SLO", "zpx", 6), 0x1B: ("SLO", "aby", 7),
+        0x1F: ("SLO", "abx", 7),
+        0x43: ("SRE", "inx", 8), 0x47: ("SRE", "zp", 5),
+        0x4F: ("SRE", "abs", 6), 0x53: ("SRE", "iny", 8),
+        0x57: ("SRE", "zpx", 6), 0x5B: ("SRE", "aby", 7),
+        0x5F: ("SRE", "abx", 7),
+        0x23: ("RLA", "inx", 8), 0x27: ("RLA", "zp", 5),
+        0x2F: ("RLA", "abs", 6), 0x33: ("RLA", "iny", 8),
+        0x37: ("RLA", "zpx", 6), 0x3B: ("RLA", "aby", 7),
+        0x3F: ("RLA", "abx", 7),
+        0x63: ("RRA", "inx", 8), 0x67: ("RRA", "zp", 5),
+        0x6F: ("RRA", "abs", 6), 0x73: ("RRA", "iny", 8),
+        0x77: ("RRA", "zpx", 6), 0x7B: ("RRA", "aby", 7),
+        0x7F: ("RRA", "abx", 7),
+    }
+    nop_modes = {
+        0x1A: ("imp", 2), 0x3A: ("imp", 2), 0x5A: ("imp", 2),
+        0x7A: ("imp", 2), 0xDA: ("imp", 2), 0xFA: ("imp", 2),
+        0x04: ("zp", 3), 0x44: ("zp", 3), 0x64: ("zp", 3),
+        0x14: ("zpx", 4), 0x34: ("zpx", 4), 0x54: ("zpx", 4),
+        0x74: ("zpx", 4), 0xD4: ("zpx", 4), 0xF4: ("zpx", 4),
+        0x80: ("imm", 2), 0x82: ("imm", 2), 0x89: ("imm", 2),
+        0xC2: ("imm", 2), 0xE2: ("imm", 2),
+        0x0C: ("abs", 4),
+        0x1C: ("abx", 4), 0x3C: ("abx", 4), 0x5C: ("abx", 4),
+        0x7C: ("abx", 4), 0xDC: ("abx", 4), 0xFC: ("abx", 4),
+    }
+    for code, (mnemonic, mode, cycles) in unofficial.items():
+        table[code] = Opcode(mnemonic, mode, _MODES[mode][0], cycles)
+    for code, (mode, cycles) in nop_modes.items():
+        table[code] = Opcode("NOP", mode, _MODES[mode][0], cycles)
     return tuple(table)
 
 

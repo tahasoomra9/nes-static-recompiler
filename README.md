@@ -31,7 +31,7 @@ cmake --build build --config Release
 
 ## Run any supported ROM
 
-Put a mapper-0 `.nes` ROM in `rom-game\`, then run:
+Put a mapper-0 or mapper-2 `.nes` ROM in `rom-game\`, then run:
 
 ```powershell
 .\run_game.bat "Duck Hunt (World).nes"
@@ -93,6 +93,17 @@ build\Release\nes_window.exe `
 Use `--recompiled --trace N` with the generated executable to capture the
 recompiled path.
 
+The runtime also generates SDL2 audio at 48 kHz for the two pulse channels,
+triangle, noise, DMC, and frame-counter timing.
+
+Phase 3 Q0 adds a level-sensitive CPU IRQ line. IRQs use the `$FFFE` vector,
+push status with B clear, and preserve the 6502 one-instruction latency after
+CLI, SEI, PLP, and RTI.
+
+The MMC3 core now observes filtered PPU A12 rising edges while rendering and
+drives its latch/reload IRQ counter through the CPU IRQ line. Dedicated MMC3
+scanline test ROM validation still requires user-supplied Blargg ROMs.
+
 ## Tests
 
 ```powershell
@@ -103,6 +114,14 @@ python tests\run_nestest.py
 
 ## Limitations
 
-Only mapper 0/NROM is supported. APU/audio, other mappers, savestates,
-self-modifying code, and unsupported illegal opcodes are outside this MVP.
+Mapper 0/NROM, mapper 2/UxROM, mapper 1/MMC1, and the MMC3 mapper core are
+supported. UxROM provides switchable 16 KiB PRG banks, a fixed final bank, and
+bank-aware generated dispatch. MMC1 provides serial register writes, PRG/CHR
+banking, and mirroring control. MMC3 provides 8 KiB PRG banking, 1 KiB CHR
+banking, mirroring, protected PRG-RAM, and IRQ register state. Other mappers,
+savestates,
+self-modifying code and unsupported undocumented opcodes remain outside the
+current scope. P0 supports common unofficial 6502 operations and NOP variants,
+CHR-RAM, 8 KiB PRG-RAM, and optional battery `.sav` persistence. Additional
+APU accuracy remains under validation against dedicated hardware test ROMs.
 Generated output and screenshots belong under `build\`.

@@ -19,14 +19,14 @@ class InesTests(unittest.TestCase):
         self.assertTrue(rom.has_trainer)
 
     def test_nonzero_mapper_rejected(self):
-        header = bytearray(b"NES\x1a\x01\x00\x10\x00" + bytes(8))
-        with self.assertRaisesRegex(InesError, "mapper 1 unsupported"):
+        header = bytearray(b"NES\x1a\x01\x00\x30\x00" + bytes(8))
+        with self.assertRaisesRegex(InesError, "mapper 3 unsupported"):
             parse_ines(bytes(header) + bytes(0x4000))
 
 
 class DecoderTests(unittest.TestCase):
     def test_complete_official_table(self):
-        self.assertEqual(sum(op is not None for op in OPCODES), 151)
+        self.assertEqual(sum(op is not None for op in OPCODES), 227)
 
     def test_known_sequences(self):
         lda = decode(bytes.fromhex("A9 01"), 0xC000)

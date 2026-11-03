@@ -1,4 +1,4 @@
-"""Emit instruction-boundary generated C with interpreter fallback."""
+"""Emit bank-aware instruction-boundary generated C with interpreter fallback."""
 
 from pathlib import Path
 
@@ -10,7 +10,7 @@ except ImportError:
 
 def emit_game(discovery: Discovery, output: str | Path) -> Path:
     path = Path(output)
-    instructions = {item.address: item for item in discovery.instructions}
+    instructions = {(item.bank, item.address): item for item in discovery.instructions}
     lines = [
         '#include "cpu.h"',
         '#include "bus.h"',
@@ -19,21 +19,38 @@ def emit_game(discovery: Discovery, output: str | Path) -> Path:
         'void interp_run(uint16_t addr);',
         '',
     ]
-    for address in sorted(instructions):
+    def function_name(bank: int, address: int) -> str:
+        return f"fn_B_{address:04X}" if bank == 0 else f"fn_{bank}_{address:04X}"
+
+    for bank, address in sorted(instructions):
         lines += [
-            f"static void fn_{address:04X}(void)",
+            f"static void {function_name(bank, address)}(void)",
             "{",
             f"    cpu_step();",
             f"    cpu_trace_record(0x{address:04X});",
             "}",
             "",
         ]
-    lines += ["void generated_dispatch(uint16_t addr)", "{", "    switch (addr) {"]
-    for address in sorted(instructions):
-        lines.append(f"    case 0x{address:04X}: fn_{address:04X}(); return;")
     lines += [
-        "    default: cpu.pc = addr; cpu_step(); cpu_trace_record(addr); return;",
+        "void generated_dispatch(uint16_t addr)",
+        "{",
+        "    switch (current_prg_bank(addr)) {",
+    ]
+    banks = sorted({bank for bank, _ in instructions})
+    for bank in banks:
+        lines += [f"    case {bank}:", "        switch (addr) {"]
+        for item_bank, address in sorted(instructions):
+            if item_bank == bank:
+                lines.append(
+                    f"        case 0x{address:04X}: "
+                    f"{function_name(bank, address)}(); return;"
+                )
+        lines.append("        default: break;")
+        lines.append("        }")
+    lines += [
+        "    default: break;",
         "    }",
+        "    cpu.pc = addr; cpu_step(); cpu_trace_record(addr); return;",
         "}",
         "",
         "void game_main(void)",

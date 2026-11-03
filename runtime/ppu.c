@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "cpu.h"
+#include "bus.h"
 
 static uint8_t regs[8];
 static uint8_t vram[0x800];
@@ -80,7 +81,15 @@ static uint16_t nametable_offset(uint16_t addr)
     if (addr >= 0x3000 && addr < 0x3f00) addr = (uint16_t)(addr - 0x1000);
     uint16_t table = (uint16_t)((addr - 0x2000) >> 10);
     uint16_t offset = (uint16_t)((addr - 0x2000) & 0x03ff);
-    uint16_t physical = vertical_mirroring ? (table & 1) : (table >> 1);
+    uint16_t physical;
+    if (vertical_mirroring < 2)
+        physical = vertical_mirroring ? (table & 1) : (table >> 1);
+    else if (vertical_mirroring == 2)
+        physical = 0;
+    else if (vertical_mirroring == 3)
+        physical = 1;
+    else
+        physical = table & 1;
     return (uint16_t)(physical * 0x400 + offset);
 }
 static uint8_t ppu_mem_read(uint16_t addr)
@@ -92,6 +101,11 @@ static uint8_t ppu_mem_read(uint16_t addr)
     addr = (uint16_t)((addr - 0x3f00) & 31);
     if ((addr & 3) == 0) addr &= 0x0f;
     return palette[addr];
+}
+uint8_t ppu_chr_read(uint16_t addr) { return chr[addr & 0x1fff]; }
+void ppu_chr_write(uint16_t addr, uint8_t value)
+{
+    if (chr_writable) chr[addr & 0x1fff] = value;
 }
 static uint8_t background_pixel(uint16_t render_v, unsigned px, unsigned line)
 {
@@ -257,6 +271,7 @@ void ppu_step(uint32_t cpu_cycles)
                 nmi = 0;
             }
             int rendering = (regs[1] & 0x18) != 0;
+            mapper_ppu_a12((uint8_t)(rendering && dots == 260), (uint8_t)rendering);
             if (scanline < NES_H && dots == 0) {
                 line_render_v = v;
                 log_scroll_line(v);
@@ -283,6 +298,7 @@ void ppu_step(uint32_t cpu_cycles)
             ++dots;
             if (dots == 341) {
                 dots = 0;
+                mapper_scanline();
                 if (scanline == NES_H - 1) {
                     frame_ready = 1;
                     ++frame_number;
@@ -379,6 +395,7 @@ void ppu_set_scroll_log_frame(unsigned frame)
 void ppu_set_bg_log(int enabled) { bg_log_enabled = enabled != 0; }
 void ppu_set_frame_log(int enabled) { frame_log_enabled = enabled != 0; }
 void ppu_set_mirroring(int vertical) { vertical_mirroring = vertical != 0; }
+void ppu_set_mirroring_mode(int mode) { vertical_mirroring = mode; }
 void ppu_nmi_ack(void) { nmi = 0; }
 void ppu_fill_test_gradient(void)
 {

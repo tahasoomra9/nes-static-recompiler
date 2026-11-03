@@ -24,10 +24,10 @@ class InesFormatTests(unittest.TestCase):
         parsed = parse_ines(rom(header))
         self.assertEqual((parsed.format, parsed.mapper, parsed.submapper), ("NES 2.0", 0, 0))
 
-    def test_nes_2_mapper_rejected(self):
+    def test_nes_2_mapper_four(self):
         header = b"NES\x1a" + bytes([2, 1, 0x40, 8]) + bytes(8)
-        with self.assertRaisesRegex(InesError, "mapper 4 unsupported"):
-            parse_ines(rom(header))
+        parsed = parse_ines(rom(header))
+        self.assertEqual(parsed.mapper, 4)
 
     def test_nes_2_trainer_shifts_prg(self):
         header = b"NES\x1a" + bytes([1, 0, 4, 8]) + bytes(8)
