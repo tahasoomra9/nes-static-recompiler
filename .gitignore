@@ -1,4 +1,5 @@
 build/
+rom-game/
 __pycache__/
 *.pyc
 .vs/
